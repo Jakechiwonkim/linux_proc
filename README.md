@@ -1,5 +1,5 @@
 git reset filename.txt
-
+#http://data.agaric.com/undo-git-add-remove-files-staged-git-commit
 
 …or create a new repository on the command line
 echo "# linux_proc" >> README.md

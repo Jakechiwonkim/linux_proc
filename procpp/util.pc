@@ -1,0 +1,101 @@
+#include <unistd.h>
+
+//#define SQLCA_STORAGE_CLASS extern
+#include <sqlca.h>
+#include <sqlda.h>
+#include <sqlcpr.h>
+
+
+#include "util.h"
+#include "sample1.h"
+
+
+//-------------------------------------------
+void ORA_CONNECT(const char* userid, const char* pwd, const char* dbname)
+{
+EXEC SQL BEGIN DECLARE SECTION ;
+	/* Define constants for VARCHAR lengths. */
+	#define     UNAME_LEN      20
+	#define     PWD_LEN        40
+
+	/* Declare variables. No declare section is needed if MODE=ORACLE.*/
+	/* VARCHAR is an Oracle-supplied struct */
+	VARCHAR     USERID[UNAME_LEN];	
+	VARCHAR     password[PWD_LEN];    
+	VARCHAR     DBNAME[UNAME_LEN];  
+
+EXEC SQL END DECLARE SECTION ;
+
+	printf("Connect to ORACLE.");
+
+/* Connect to ORACLE--
+ * Copy the USERID into the VARCHAR.
+ * Set the length component of the VARCHAR. */
+ 
+//	strncpy((char *) USERID.arr, userid, UNAME_LEN);
+//	USERID.len = strlen((char *) USERID.arr);
+	memcpy2Host(USERID, userid, UNAME_LEN);
+	
+	
+/* Copy the password. */
+//	strncpy((char *) password.arr, pwd, PWD_LEN);
+//	password.len = strlen((char *) password.arr);
+	memcpy2Host(password, pwd, PWD_LEN);
+
+
+/* Copy the TNS name */
+//	strncpy((char *) DBNAME.arr, conn, UNAME_LEN);
+//	DBNAME.len = strlen((char *) DBNAME.arr);
+	memcpy2Host(DBNAME, dbname, UNAME_LEN);
+	
+
+
+/* Register sql_error() as the error handler. */
+    EXEC SQL WHENEVER SQLERROR DO sql_error("ORACLE error--\n");
+
+
+/* Connect to ORACLE.  Program will call sql_error()
+ * if an error occurs when connecting to the default database.
+ */
+	EXEC SQL CONNECT :USERID IDENTIFIED BY :password USING :DBNAME ;
+
+	printf("\nConnected to ORACLE as user: %s\n", USERID.arr);
+}
+
+//-------------------------------------------
+void ORA_COMMIT()
+{
+	printf("Disconnect from ORACLE. COMMIT  \n\n");
+
+	/* Disconnect from ORACLE. */	
+    EXEC SQL COMMIT WORK RELEASE;
+}
+
+//-------------------------------------------
+void ORA_ROLLBACK()
+{
+	printf("Disconnect from ORACLE. ROLLBACK  \n\n");
+
+	EXEC SQL ROLLBACK WORK RELEASE;
+}
+
+//-------------------------------------------
+void sql_error(const char *msg) 
+{ 
+    char err_msg[512];
+    int buf_len, msg_len;
+
+    EXEC SQL WHENEVER SQLERROR CONTINUE;
+
+    printf("\n%s\n", msg);
+
+/* Call sqlglm() to get the complete text of the error message. 
+	extern "C" void sqlglm(const char*, size_t*, size_t*);
+*/
+    buf_len = sizeof (err_msg);
+    sqlglm((unsigned char*)err_msg, (int *)&buf_len, (int *)&msg_len);
+    printf("%.*s\n", msg_len, err_msg);
+
+    EXEC SQL ROLLBACK RELEASE;
+    exit(1);
+} 
